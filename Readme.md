@@ -1,113 +1,116 @@
-# Tables of Results
-Data and details results can be found in the document [TABLES.pdf](https://github.com/mmogib/NMSPaperMAY24/blob/main/TABLES.pdf).
+# SGSD-DEED Paper Experiments
 
-# Paper Experiments
-> Integrated Game-Theoretic and Multi-objective Models for Dynamic Economic Emission Dispatch in Multi-Period Smart Grid Demand Response
+[![Status](https://img.shields.io/badge/status-ready%20for%20submission-green.svg)]()
+[![Julia](https://img.shields.io/badge/Julia-1.10+-purple.svg)](https://julialang.org/)
+[![DRDeed.jl](https://img.shields.io/badge/DRDeed.jl-v0.5.0-blue.svg)](https://github.com/mmogib/DRDeed.jl)
+
+> **A Stackelberg Game for Multi-Objective Demand Response in Dynamic Economic Emission Dispatch**
 >
-> Authors:
-> - Norah Almuraysil, 
-> - Mohammed Alshahrani, 
-> - Slim Belhaiza
+> Authors: Norah Almuraysil, Mohammed Alshahrani, Slim Belhaiza
 
-This repository contains the code and instructions for running experiments using the `DRDeed` package. The experiments focus on optimizing energy management in smart grids by integrating demand response strategies.
+This repository contains the code for reproducing all experiments in the paper.
+
+## Key Results
+
+| Experiment | Key Finding |
+|------------|-------------|
+| DR-DEED Comparison | 50-53% cost, 63-72% emission, 78-80% loss reduction vs DR-DEED |
+| Model Progression | 46-56% cost, 72-77% emission reduction vs baseline DEED |
+| IEEE 30-Bus | 3-5% cost premium for network feasibility |
+| Saudi Case Study | 46-47% cost, 68-70% emission reduction (regional validation) |
+| Pareto Analysis | 28% emission reduction for only 4.5% cost increase |
 
 ## Requirements
 
-To run the experiments, you need to install the following Julia packages:
-
-- `DRDeed`
-- `Random`
-- `Dates`
-- `LinearAlgebra`
-- `Statistics`
-- `TimeZones`
-- `DataFrames`
-- `Plots`
-- `StatsPlots`
-- `XLSX`
-
-You can install these packages using Julia's package manager:
-
-```julia
-using Pkg
-Pkg.add("https://github.com/mmogib/DRDeed.jl")
-Pkg.add("TimeZones")
-Pkg.add("DataFrames")
-Pkg.add("Plots")
-Pkg.add("StatsPlots")
-Pkg.add("XLSX")
-```
+- Julia 1.10+
+- Ipopt solver (v3.14 with MA27 linear solver recommended)
+- DRDeed.jl v0.5.0
 
 ## Setup
 
-Make sure to include the necessary utility files before running the experiments:
-
 ```julia
-include("utils.jl")
-include("fns.jl")
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 ```
 
-## Experiment 1
+## Reproducing All Paper Results
 
-To run Experiment 1, execute the following command. The results will be saved in the folders `results/scenario1/` and `results/scenario2/`.
-
-```julia
-run_experiment_1()
-```
-
-## Experiment 2 (Production)
-
-To run Experiment 2 and save the results, use the following command. The results will be saved in `results/experiment2/yyyy_mm_dd/solutions.xlsx`, where `yyyy_mm_dd` stands for the date when the results are saved.
+To reproduce ALL results, plots, and data for the paper:
 
 ```julia
-sols = experiment2(50:50:400, 4:4:20, "results/experiment2")  # Uncomment to run
+include("experiments.jl")
+run_paper_experiments()
 ```
 
-## Experiment 2 (Plots and Tables)
+This runs all 8 experiments and saves results to `results/`.
 
-The provided Julia code performs several steps to read data from an Excel file, process it, and generate plots. Here's a detailed explanation of each part:
+## Individual Experiments
 
-1. **Reading Data from Excel:**
-   ```julia
-   df = readExperiment2Results("results/experiment2/2024_05_15/solutions.xlsx", "SOLUTIONS")
-   ```
-   This line reads the data from the specified Excel file (`solutions.xlsx`) and sheet (`SOLUTIONS`) into a DataFrame `df`. The `readExperiment2Results` function is assumed to be a custom function defined elsewhere in the code.
+You can also run experiments individually:
 
-2. **Grouping and Aggregating Data:**
-   ```julia
-   groupddf = groupby(df, [:c, :g]) |>
-     d -> combine(d,
-                  :cost => mean => :cost_avg,
-                  :emission => mean => :emission_avg,
-                  :utility => mean => :utility_avg,
-                  :demand => mean => :demand_avg,
-                  :loss => mean => :loss_avg,
-                  :power_generated => mean => :power_generated_avg,
-                  :time => mean => :time_avg) |>
-     d -> transform(d,
-                    [:demand_avg, :power_generated_avg] =>
-                    ByRow((r1, r2) -> 100 * (r1 - r2) / r1) => :load_reduction)
-   ```
-   - **Grouping:** `groupby(df, [:c, :g])` groups the DataFrame `df` by the columns `:c` (representing the number of customers) and `:g` (representing the number of generators).
-   - **Aggregating:** For each group, the `combine` function calculates the mean of several columns (`:cost`, `:emission`, `:utility`, `:demand`, `:loss`, `:power_generated`, `:time`) and creates new columns with the suffix `_avg` (e.g., `:cost_avg`, `:emission_avg`).
-   - **Calculating Load Reduction:** The `transform` function adds a new column `:load_reduction` that calculates the percentage reduction in load using the formula `100 * (demand_avg - power_generated_avg) / demand_avg`.
+```julia
+include("experiments.jl")
 
-3. **Plot Data Definitions:**
-   ```julia
-   plts_data = [
-     (:cost_avg, "Cost (\$)"),
-     (:emission_avg, "Emission (lb)"),
-     (:utility_avg, "Utility"),
-     (:load_reduction, "Load Reduction (MW)"),
-     (:loss_avg, "Loss (MW)"),
-     (:time_avg, "CPU Time (seconds)"),
-   ]
-   ```
-   This array defines the columns to be plotted along with their corresponding y-axis labels. Each tuple contains the column name and its label.
+run_drdeed_comparison()        # Experiment 1: DR-DEED comparison (SC1/SC2)
+run_scalability()              # Experiment 2: Scalability analysis
+run_ieee30_validation()        # Experiment 3: IEEE 30-bus DC-OPF validation
+run_model_progression()        # Experiment 4: DEED -> DR-DEED -> SGSD-DEED
+run_sensitivity()              # Experiment 5: Sensitivity & robustness analysis
+run_saudi_case_study()         # Experiment 6: Saudi Eastern Province case study
+run_pareto_analysis()          # Experiment 5E: Pareto front (epsilon-constraint)
+run_metaheuristic_comparison() # Remark: NSGA-II vs Ipopt comparison
+```
 
-4. **Generating Plots:**
-   ```julia
-   pls = map(plts_data) do (item, ylabel)
-     pltit(groupddf, 50:50:400, 4:4:20, item, "Number of customers", ylabel; folder="results/experiment2/2024_05_12")
-   end
-   ```
+## Results Directory
+
+```
+results/
+├── drdeed_comparison/       # Experiment 1: DR-DEED Comparison
+├── scalability/             # Experiment 2: Scalability Analysis
+├── ieee30_validation/       # Experiment 3: IEEE 30-Bus Validation
+├── model_progression/       # Experiment 4: Model Progression
+├── sensitivity/             # Experiment 5: Sensitivity Analysis
+├── saudi_case_study/        # Experiment 6: Saudi Case Study
+├── pareto_analysis/         # Experiment 5E: Pareto Front Analysis
+└── metaheuristic_comparison/ # Remark: Metaheuristic Comparison
+```
+
+**Total output:** 120+ files (24 XLSX, 10 TEX, 80+ PDF/SVG figures)
+
+## DRDeed.jl Package
+
+The core optimization models are implemented in [DRDeed.jl](https://github.com/mmogib/DRDeed.jl).
+
+```julia
+using Pkg
+Pkg.add(url="https://github.com/mmogib/DRDeed.jl.git")
+```
+
+## Solver Configuration
+
+The experiments use Ipopt with the following settings:
+- KKT tolerance: 1e-6
+- Maximum iterations: 3000
+- Linear solver: MA27 (recommended for performance)
+
+## Data and Tables
+
+Detailed result tables can be found in the `results/` directory after running experiments.
+
+## Citation
+
+If you use this code, please cite:
+
+```bibtex
+@article{almuraysil2026stackelberg,
+  title={A Stackelberg Game for Multi-Objective Demand Response in Dynamic Economic Emission Dispatch},
+  author={Almuraysil, Norah and Alshahrani, Mohammed and Belhaiza, Slim},
+  journal={[Under Review]},
+  year={2026}
+}
+```
+
+## License
+
+MIT License

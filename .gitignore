@@ -1,0 +1,16 @@
+# Ignore results folder contents but keep the folder
+results/*
+!results/.gitkeep
+
+# Julia artifacts
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+Manifest.toml
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
