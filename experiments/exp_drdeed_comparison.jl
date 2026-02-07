@@ -56,8 +56,8 @@ function experiment1_single(
         xlabel="Time (hour)",
         ylabel="Generator Power (MW)",
     )
-    fig1_file = outputfilename("load_profile"; dated=true, root=folder, extension="svg")
-    Plots.svg(p1, fig1_file)
+    fig1_file = outputfilename("load_profile"; dated=true, root=folder, extension="pdf")
+    Plots.pdf(p1, fig1_file)
 
     # Plot 2: Power curtailed per customer
     χ = gtr_sol.solution.deedSolution.χ
@@ -69,8 +69,8 @@ function experiment1_single(
         xlabel="Time (hour)",
         ylabel="Power Curtailed (MW)",
     )
-    fig2_file = outputfilename("power_curtailed"; dated=true, root=folder, extension="svg")
-    Plots.svg(p2, fig2_file)
+    fig2_file = outputfilename("power_curtailed"; dated=true, root=folder, extension="pdf")
+    Plots.pdf(p2, fig2_file)
 
     # Plot 3: Incentives per customer
     ω = gtr_sol.solution.deedSolution.ω
@@ -82,8 +82,8 @@ function experiment1_single(
         xlabel="Time (hour)",
         ylabel="Incentive (\$)",
     )
-    fig3_file = outputfilename("incentive"; dated=true, root=folder, extension="svg")
-    Plots.svg(p3, fig3_file)
+    fig3_file = outputfilename("incentive"; dated=true, root=folder, extension="pdf")
+    Plots.pdf(p3, fig3_file)
 
     gtr_sol
 end

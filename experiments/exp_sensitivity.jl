@@ -201,8 +201,8 @@ function sensitivity_theta(
       "Utility" => valid.Utility,
     )
     metrics_lineplot(
-      Float64.(valid.theta), metrics_dict, "Customer Willingness (θ)";
-      folder=folder, name="theta_sensitivity", title_prefix="θ Sensitivity — ",
+      Float64.(valid.theta), metrics_dict, "Customer Willingness (theta)";
+      folder=folder, name="theta_sensitivity", title_prefix="Theta Sensitivity - ",
     )
   end
 
@@ -269,7 +269,7 @@ function sensitivity_storage(
     )
     metrics_lineplot(
       Float64.(valid.scale), metrics_dict, "Storage Capacity Scale Factor";
-      folder=folder, name="storage_sensitivity", title_prefix="Storage Sensitivity — ",
+      folder=folder, name="storage_sensitivity", title_prefix="Storage Sensitivity - ",
     )
   end
 
@@ -353,7 +353,7 @@ function sensitivity_customers(
     )
     metrics_lineplot_with_errorbars(
       Float64.(agg.customers), metrics_err, "Number of Customers";
-      folder=folder, name="customer_sensitivity", title_prefix="Customer Sensitivity — ",
+      folder=folder, name="customer_sensitivity", title_prefix="Customer Sensitivity - ",
     )
 
     # Save LaTeX table
@@ -397,7 +397,7 @@ function generate_tornado_diagrams(
   mkpath(folder)
 
   # Extract ranges for each parameter
-  param_names = ["Weight Factors", "Customer Willingness (θ)", "Storage Capacity", "Customer Count"]
+  param_names = ["Weight Factors", "Customer Willingness (theta)", "Storage Capacity", "Customer Count"]
 
   for metric in ["Cost", "Emission", "Loss", "Utility"]
     sym = Symbol(metric)
@@ -462,7 +462,7 @@ function generate_tornado_diagrams(
         high_vals[valid_mask],
         base_value;
         xlabel=metric,
-        title="Sensitivity — $metric",
+        title="Sensitivity - $metric",
       )
       save_figure(p, "tornado_$(lowercase(metric))"; folder=folder)
     end

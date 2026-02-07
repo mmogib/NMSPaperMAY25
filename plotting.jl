@@ -59,10 +59,10 @@ end
 """
     save_figure(p, name; folder, formats)
 
-Save plot `p` to multiple formats (default: SVG + PDF).
+Save plot `p` to multiple formats (default: PDF).
 Uses `outputfilename` from utils.jl for path generation.
 """
-function save_figure(p, name::String; folder::String=".", formats=["svg", "pdf"], dated::Bool=false)
+function save_figure(p, name::String; folder::String=".", formats=["pdf"], dated::Bool=false)
   mkpath(folder)
   for fmt in formats
     filepath = outputfilename(name; dated=dated, root=folder, extension=fmt)

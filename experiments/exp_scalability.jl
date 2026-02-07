@@ -197,7 +197,6 @@ function experiment2_plot(
 
     filename = outputfilename(String(metric); dated=false, root=folder)
     savefig(p, "$(filename).pdf")
-    savefig(p, "$(filename).svg")
 end
 
 # ─────────────────────────────────────────────────────────────────
