@@ -76,12 +76,36 @@ The reported wall-clock numbers were measured on a 13th Gen Intel Core i9-13900H
 
 ---
 
-## Quick Start
+## Setup
+
+`DRDeed.jl` is the optimization package that backs every experiment in this repository. It is **not registered in the Julia General registry**, so `Pkg.instantiate()` alone cannot resolve it — you must install it directly from GitHub first:
 
 ```julia
 using Pkg
 Pkg.activate(".")
+Pkg.add(url="https://github.com/mmogib/DRDeed.jl.git")  # required: not on the General registry
+Pkg.instantiate()                                        # resolves the remaining deps
+```
+
+Run this once after cloning. The `Pkg.add` step writes the GitHub source into the local `Manifest.toml`; subsequent sessions only need `Pkg.activate(".")`.
+
+If you want to experiment with modifications to `DRDeed.jl` itself, clone it next to this repository and use a development install instead:
+
+```julia
+using Pkg
+Pkg.activate(".")
+Pkg.develop(path="../DRDeed.jl")  # path to your local clone
 Pkg.instantiate()
+```
+
+The published `main` branch of `DRDeed.jl` already includes the valve-point loading (`vpl=true`) flag and multi-start warm-start support used by Experiment 7, so the standard `Pkg.add(url=...)` flow is sufficient for full reproduction of the paper's numbers.
+
+## Quick Start
+
+After completing the setup above:
+
+```julia
+using Pkg; Pkg.activate(".")
 include("experiments.jl")
 
 # Reproduce every paper experiment (writes to results/):
@@ -100,23 +124,9 @@ run_model_progression()         # Experiment 4
 run_sensitivity()               # Experiment 5 (5A–5G + tornado)
 run_saudi_case_study()          # Experiment 6
 run_pareto_analysis()           # Pareto front (5E)
-run_vpl_experiment()            # Experiment 7 — see VPL note below
+run_vpl_experiment()            # Experiment 7 (VPL multi-start)
 run_metaheuristic_comparison()  # NSGA-II vs Ipopt remark
 ```
-
-### Experiment 7 (VPL) — local DRDeed.jl required
-
-The valve-point loading variant uses a `vpl=true` flag and multi-start warm-start support added to `DRDeed.jl` for this revision. Until those changes are tagged in a public DRDeed.jl release, run Experiment 7 against a local checkout:
-
-```julia
-using Pkg
-Pkg.develop(path="../DRDeed.jl")  # path to your local DRDeed.jl clone
-Pkg.instantiate()
-include("experiments.jl")
-run_vpl_experiment()
-```
-
-All other experiments (1–6) work directly against the published DRDeed.jl.
 
 ---
 
