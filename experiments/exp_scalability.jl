@@ -215,9 +215,9 @@ function run_scalability(;
     generators::Union{StepRange,Vector{Int}}=4:2:8,
     trials::Int=3,
 )
-    logmsg("=" ^ 60 * "\n", color=:blue)
+    logmsg("="^60 * "\n", color=:blue)
     logmsg("EXPERIMENT 2: Scalability Analysis\n", color=:blue)
-    logmsg("=" ^ 60 * "\n", color=:blue)
+    logmsg("="^60 * "\n", color=:blue)
 
     folder = "results/scalability"
     customers_vec = collect(customers)
@@ -250,3 +250,5 @@ function read_experiment2_results(filename::String, sheet::String="SOLUTIONS")
     df = DataFrame(XLSX.eachtablerow(xlsx[sheet]))
     return df
 end
+
+

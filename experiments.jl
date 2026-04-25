@@ -47,12 +47,14 @@ include("plotting.jl")
 
 include("experiments/exp_drdeed_comparison.jl")
 include("experiments/exp_scalability.jl")
+include("experiments/exp_scaling_walltime.jl")
 include("experiments/exp_ieee30_validation.jl")
 include("experiments/exp_model_progression.jl")
 include("experiments/exp_sensitivity.jl")
 include("experiments/exp_saudi_case_study.jl")
 include("experiments/exp_pareto_analysis.jl")
 include("experiments/exp_metaheuristic_comparison.jl")
+include("experiments/exp_vpl.jl")
 
 # ─────────────────────────────────────────────────────────────────
 # Run all paper experiments

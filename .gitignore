@@ -14,3 +14,20 @@ Manifest.toml
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Agent / AI assistant artifacts (keep local, do not publish)
+CLAUDE.md
+CLAUDE.md.bak
+.claudeignore
+.claude/
+.cursor/
+.aider*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

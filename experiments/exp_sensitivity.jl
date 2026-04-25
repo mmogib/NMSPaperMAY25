@@ -45,6 +45,48 @@ function with_pimax_scale(gtdata, scale::Float64)
   )
 end
 
+"""
+    with_demand_scale(gtdata, scale)
+
+Construct new GTDeedData with scaled demand profile.
+Both Dt (aggregate demand) and CDemandt (per-customer demand) are scaled
+together to preserve the demand-allocation invariants used by the model.
+"""
+function with_demand_scale(gtdata, scale::Float64)
+  dd = gtdata.deedData
+  new_dd = DeedData(
+    dd.customers, dd.generators, dd.periods,
+    scale .* dd.Dt, dd.B, dd.pjmin, dd.pjmax, dd.DR, dd.UR,
+    dd.K1, dd.K2, dd.θ, dd.CM, dd.UB,
+    dd.a, dd.b, dd.c, dd.e, dd.f, dd.g, dd.λ,
+  )
+  DRDeed.GTDeedData(
+    new_dd, gtdata.ahdot_it, gtdata.adot_it, gtdata.bdot_it,
+    gtdata.cdot_it, gtdata.ddot_it, gtdata.edot_it, gtdata.nudot_it,
+    gtdata.afdot_it, scale .* gtdata.CDemandt, gtdata.pimin, gtdata.pimax,
+  )
+end
+
+"""
+    with_lambda_scale(gtdata, scale)
+
+Construct new GTDeedData with scaled tariff (λ).
+"""
+function with_lambda_scale(gtdata, scale::Float64)
+  dd = gtdata.deedData
+  new_dd = DeedData(
+    dd.customers, dd.generators, dd.periods,
+    dd.Dt, dd.B, dd.pjmin, dd.pjmax, dd.DR, dd.UR,
+    dd.K1, dd.K2, dd.θ, dd.CM, dd.UB,
+    dd.a, dd.b, dd.c, dd.e, dd.f, dd.g, scale .* dd.λ,
+  )
+  DRDeed.GTDeedData(
+    new_dd, gtdata.ahdot_it, gtdata.adot_it, gtdata.bdot_it,
+    gtdata.cdot_it, gtdata.ddot_it, gtdata.edot_it, gtdata.nudot_it,
+    gtdata.afdot_it, gtdata.CDemandt, gtdata.pimin, gtdata.pimax,
+  )
+end
+
 # ─────────────────────────────────────────────────────────────────
 # 5A: Weight Factor Sensitivity
 # ─────────────────────────────────────────────────────────────────
@@ -373,21 +415,158 @@ function sensitivity_customers(
 end
 
 # ─────────────────────────────────────────────────────────────────
+# 5F: Demand Multiplier Sensitivity
+# ─────────────────────────────────────────────────────────────────
+
+"""
+    sensitivity_demand(customers, generators, periods, folder, w;
+                       scales=[0.8, 0.9, 1.0, 1.1, 1.2])
+
+Sweep a uniform demand multiplier applied to Dt (and CDemandt). For each
+scale, construct new data and solve. Addresses R1.4 (demand-forecast
+uncertainty).
+"""
+function sensitivity_demand(
+  customers::Int,
+  generators::Int,
+  periods::Int,
+  folder::String,
+  w::Vector{Float64};
+  scales::Vector{Float64}=[0.8, 0.9, 1.0, 1.1, 1.2],
+)
+  setup_plot_defaults()
+  logmsg("Experiment 5F — Demand Multiplier Sensitivity\n", color=:blue)
+  mkpath(folder)
+
+  Random.seed!(5005)
+  base_gtdata = getGTDRDeedData(customers, generators, periods)
+
+  results_data = []
+
+  for scale in scales
+    logmsg("  Demand scale = $(scale)x\n", color=:cyan)
+    modified = with_demand_scale(base_gtdata, scale)
+
+    result, t = solve_with_retry(; max_attempts=5) do
+      gtdrdeed(customers, generators, periods; data=modified)[:ws](w)
+    end
+    if !isnothing(result)
+      m = extract_metrics_gtdeed(result, t)
+      push!(results_data, (; scale=scale, metrics_nt(m)...))
+    else
+      push!(results_data, (scale=scale, Cost=NaN, Emission=NaN, Loss=NaN, Utility=NaN, Time=NaN))
+    end
+  end
+
+  df = DataFrame(results_data)
+
+  excel_file = outputfilename("demand_sensitivity"; dated=false, root=folder)
+  XLSX.writetable("$(excel_file).xlsx", "DEMAND" => df, overwrite=true)
+  logmsg("  Saved: $(excel_file).xlsx\n", color=:green)
+
+  valid = filter(r -> !isnan(r.Cost), df)
+  if nrow(valid) > 0
+    metrics_dict = Dict{String,Vector{Float64}}(
+      "Cost" => valid.Cost,
+      "Emission" => valid.Emission,
+      "Loss" => valid.Loss,
+      "Utility" => valid.Utility,
+    )
+    metrics_lineplot(
+      Float64.(valid.scale), metrics_dict, "Demand Multiplier";
+      folder=folder, name="demand_sensitivity", title_prefix="Demand Sensitivity - ",
+    )
+  end
+
+  return df
+end
+
+# ─────────────────────────────────────────────────────────────────
+# 5G: Tariff (Price-Signal) Sensitivity
+# ─────────────────────────────────────────────────────────────────
+
+"""
+    sensitivity_price(customers, generators, periods, folder, w;
+                      scales=[0.75, 0.875, 1.0, 1.125, 1.25])
+
+Sweep a uniform multiplier applied to the tariff matrix λ. For each scale,
+construct new data and solve. Addresses R1.4 (price-signal uncertainty).
+"""
+function sensitivity_price(
+  customers::Int,
+  generators::Int,
+  periods::Int,
+  folder::String,
+  w::Vector{Float64};
+  scales::Vector{Float64}=[0.75, 0.875, 1.0, 1.125, 1.25],
+)
+  setup_plot_defaults()
+  logmsg("Experiment 5G — Tariff (Price-Signal) Sensitivity\n", color=:blue)
+  mkpath(folder)
+
+  Random.seed!(5006)
+  base_gtdata = getGTDRDeedData(customers, generators, periods)
+
+  results_data = []
+
+  for scale in scales
+    logmsg("  Tariff scale = $(scale)x\n", color=:cyan)
+    modified = with_lambda_scale(base_gtdata, scale)
+
+    result, t = solve_with_retry(; max_attempts=5) do
+      gtdrdeed(customers, generators, periods; data=modified)[:ws](w)
+    end
+    if !isnothing(result)
+      m = extract_metrics_gtdeed(result, t)
+      push!(results_data, (; scale=scale, metrics_nt(m)...))
+    else
+      push!(results_data, (scale=scale, Cost=NaN, Emission=NaN, Loss=NaN, Utility=NaN, Time=NaN))
+    end
+  end
+
+  df = DataFrame(results_data)
+
+  excel_file = outputfilename("price_sensitivity"; dated=false, root=folder)
+  XLSX.writetable("$(excel_file).xlsx", "PRICE" => df, overwrite=true)
+  logmsg("  Saved: $(excel_file).xlsx\n", color=:green)
+
+  valid = filter(r -> !isnan(r.Cost), df)
+  if nrow(valid) > 0
+    metrics_dict = Dict{String,Vector{Float64}}(
+      "Cost" => valid.Cost,
+      "Emission" => valid.Emission,
+      "Loss" => valid.Loss,
+      "Utility" => valid.Utility,
+    )
+    metrics_lineplot(
+      Float64.(valid.scale), metrics_dict, "Tariff Multiplier";
+      folder=folder, name="price_sensitivity", title_prefix="Tariff Sensitivity - ",
+    )
+  end
+
+  return df
+end
+
+# ─────────────────────────────────────────────────────────────────
 # 5E: Tornado Diagrams
 # ─────────────────────────────────────────────────────────────────
 
 """
-    generate_tornado_diagrams(theta_df, storage_df, weight_df, customer_df, folder;
+    generate_tornado_diagrams(theta_df, storage_df, weight_df, customer_df,
+                              demand_df, price_df, folder;
                               base_theta=0.5, base_scale=1.0)
 
 Generate tornado diagrams showing parameter sensitivity for each metric.
-Computes the metric range [low, high] for each parameter around the base case.
+Computes the metric range [low, high] for each of the six parameters
+(weights, θ, storage, customer count, demand, tariff) around the base case.
 """
 function generate_tornado_diagrams(
   theta_df::DataFrame,
   storage_df::DataFrame,
   weight_df::DataFrame,
   customer_df::DataFrame,
+  demand_df::DataFrame,
+  price_df::DataFrame,
   folder::String;
   base_theta::Float64=0.5,
   base_scale::Float64=1.0,
@@ -397,7 +576,14 @@ function generate_tornado_diagrams(
   mkpath(folder)
 
   # Extract ranges for each parameter
-  param_names = ["Weight Factors", "Customer Willingness (theta)", "Storage Capacity", "Customer Count"]
+  param_names = [
+    "Weight Factors",
+    "Customer Willingness (theta)",
+    "Storage Capacity",
+    "Customer Count",
+    "Demand Multiplier",
+    "Tariff Multiplier",
+  ]
 
   for metric in ["Cost", "Emission", "Loss", "Utility"]
     sym = Symbol(metric)
@@ -445,6 +631,26 @@ function generate_tornado_diagrams(
         push!(low_vals, NaN)
         push!(high_vals, NaN)
       end
+    else
+      push!(low_vals, NaN)
+      push!(high_vals, NaN)
+    end
+
+    # Demand multiplier
+    valid_d = filter(r -> !isnan(r[sym]), demand_df)
+    if nrow(valid_d) > 0
+      push!(low_vals, minimum(valid_d[!, sym]))
+      push!(high_vals, maximum(valid_d[!, sym]))
+    else
+      push!(low_vals, NaN)
+      push!(high_vals, NaN)
+    end
+
+    # Tariff multiplier
+    valid_p = filter(r -> !isnan(r[sym]), price_df)
+    if nrow(valid_p) > 0
+      push!(low_vals, minimum(valid_p[!, sym]))
+      push!(high_vals, maximum(valid_p[!, sym]))
     else
       push!(low_vals, NaN)
       push!(high_vals, NaN)
@@ -499,8 +705,14 @@ function run_sensitivity(; customers::Int=5, generators::Int=6)
   # 5D: Customer count sensitivity
   customer_df = sensitivity_customers(generators, "$base_folder/customers", w_bc)
 
-  # 5E: Tornado diagrams
-  generate_tornado_diagrams(theta_df, storage_df, weight_df, customer_df, "$base_folder/tornado")
+  # 5F: Demand multiplier sensitivity (R1.4)
+  demand_df = sensitivity_demand(customers, generators, periods, "$base_folder/demand", w_bc)
 
-  return (weight_df, theta_df, storage_df, customer_df)
+  # 5G: Tariff (price-signal) sensitivity (R1.4)
+  price_df = sensitivity_price(customers, generators, periods, "$base_folder/price", w_bc)
+
+  # 5E: Tornado diagrams (refreshed to include all six parameters)
+  generate_tornado_diagrams(theta_df, storage_df, weight_df, customer_df, demand_df, price_df, "$base_folder/tornado")
+
+  return (weight_df, theta_df, storage_df, customer_df, demand_df, price_df)
 end
